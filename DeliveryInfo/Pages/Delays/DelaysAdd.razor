@@ -1,0 +1,50 @@
+﻿@page "/delaysadd"
+<style>
+    .patbtn {
+        margin-left: 10px;
+        margin-right: 10px;
+        margin-top: 10px;
+        margin-bottom: 10px;
+    }
+</style>
+<ul class="nav nav-pills">
+    <li class="nav-item"><a class="nav-link active" data-toggle="tab" href="#pattern">Шаблоны</a></li>
+    <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#one">На ресторан</a></li>
+    <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#group">На Группу</a></li>
+    <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#type">По типу</a></li>
+    
+</ul>
+
+<div class="tab-content">
+    <div class="tab-pane fade" id="one">
+        <p>Ресторан</p>
+    </div>
+    <div class="tab-pane fade" id="group">
+        <p>Группы</p>
+    </div>
+    <div class="tab-pane fade" id="type">
+        <p>По типу на все рестораны</p>
+    </div>
+    <div class="tab-pane fade show active" id="pattern">
+        <p>Пробки</p>
+        <div class="row" style="border:solid;border-color:navajowhite;margin-bottom:7px">
+            <button class="btn btn-outline-info patbtn">Рестораны + 10 пробки на доставку</button>
+            <button class="btn btn-outline-info patbtn">Рестораны + 20 пробки на доставку</button>
+            
+        </div>
+        <p>Тех причина</p>
+        <div class="row" style="border:solid;border-color:navajowhite;margin-bottom:7px">
+            <button class="btn btn-outline-info patbtn">Рестораны + 10 тех-причина на все</button>
+            <button class="btn btn-outline-info patbtn">Рестораны + 20 тех-причина на все</button>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public DateTime firstdate { get; set; }
+    [Parameter]
+    public DateTime lastdate { get; set; }
+    [Parameter]
+    public List<Rests> rlist { get; set; }
+}

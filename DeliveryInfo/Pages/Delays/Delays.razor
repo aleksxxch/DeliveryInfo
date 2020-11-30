@@ -1,0 +1,121 @@
+﻿@page "/delays"
+@inject Dates Dates
+@inject IHttpClientFactory _clientFactory
+
+<div class="row justify-content-between col-md-12" style="margin-top:5px">
+    <div>
+        <ul class="nav flex-row align-self-left">
+            <li class="nav-item px-1">
+                <button class="from-control btn btn-secondary" @onclick='(() => AddContent(typeof(DelaysActive),"Активные оттяжки"))'>
+                    <span class="oi oi-clock" aria-hidden="true"></span> Активные список
+                </button>
+            </li>
+            <li class="nav-item px-1">
+                <button class="from-control btn btn-secondary" @onclick='(() => AddContent(typeof(DelaysActiveCards),"Активные оттяжки"))'>
+                    <span class="oi oi-clock" aria-hidden="true"></span> Активные по ресторанам
+                </button>
+            </li>
+            <li class="nav-item px-1">
+                <button class="from-control btn btn-secondary" @onclick='(() => AddContent(typeof(DelaysInfo),"Статистика по оттяжкам"))'>
+                    <span class="oi oi-graph" aria-hidden="true"></span> Статистика
+                </button>
+            </li>
+            <li class="nav-item px-1">
+                <button class="from-control btn btn-secondary" @onclick='(() => AddContent(typeof(DelaysTop10),"Топ 10 оттяжек"))'>
+                    <span class="oi oi-arrow-top" aria-hidden="true"></span> Топ 10
+                </button>
+            </li>
+        </ul>
+    </div>
+    <div class="row">
+        <div class="row" style="margin-right:5px">
+            <button class="btn btn-success btn-sm" @onclick='(() => AddContent(typeof(DelaysAdd),"Поставить оттяжку"))'>
+                 <span class="oi oi-caret-top" aria-hidden="true"></span> Поставить
+             </button>                
+             <button class="btn btn-danger btn-sm" @onclick='(() => AddContent(typeof(DelaysAdd),"Убрать оттяжку"))'>
+                 <span class="oi oi-caret-bottom" aria-hidden="true"></span> Убрать
+             </button>                
+        </div>        
+        <div class="row">
+            <EditForm Model="@Dates" class="col-md-12">
+                <InputDate @bind-Value="Dates.dateFirst" />
+                <InputDate @bind-Value="Dates.dateLast" />
+            </EditForm>
+        </div>
+    </div>
+</div>
+
+<br />
+<div style="position:sticky;top:0">
+    @Content
+</div>
+<div style="position:sticky;bottom:0;">
+    @errorString
+</div>
+
+
+
+@code {
+    private bool collapseNavMenu = true;
+    private string pagename;
+    public List<string> restnames = new List<string>(); //список названий ресторанов
+    public List<Rests> restlist; 
+    string errorString;
+    
+
+    private string NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await GetApiRestNames();
+        Dates.SetDate(DateTime.Today.AddDays(-1).AddHours(8), DateTime.Today.AddHours(7).AddMinutes(59));
+        Content = GetContent(typeof(DelaysActiveCards));
+        pagename = "Активные оттяжки";
+    }
+
+    private void ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+    }
+
+    private RenderFragment Content { get; set; }
+
+    protected void AddContent(Type type, string pname)
+    {
+        Content = GetContent(type);
+        pagename = pname;
+    }
+
+    RenderFragment GetContent(Type type)
+    {
+        return builder =>
+        {
+            builder.OpenComponent(0, type);
+            builder.AddAttribute(1, "firstdate", Dates.dateFirst);
+            builder.AddAttribute(2, "lastdate", Dates.dateLast);
+            builder.AddAttribute(3, "rlist", restlist);
+            builder.CloseComponent();
+        };
+
+    }
+
+    protected async Task GetApiRestNames()
+    {
+        try
+        {
+            var client2 = _clientFactory.CreateClient("StopsAPI");
+
+            restlist = await client2.GetFromJsonAsync<List<Rests>>("Rests");
+
+            //foreach(var r in restlist)
+            //{
+            //    restnames.Add(r.alter_name);
+            //}
+
+        }
+        catch (Exception ex)
+        {
+            errorString = $"Произошла ошибка при попытке получить информацию по заведениям: {ex.Message}";
+        }
+    }
+}

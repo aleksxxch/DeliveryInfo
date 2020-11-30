@@ -1,0 +1,159 @@
+﻿@page "/times"
+@inject Dates Dates
+@inject IHttpClientFactory _clientFactory
+@inject Rests Rests
+
+@if (string.IsNullOrWhiteSpace(errorString) == false)
+{
+    <div class="h2">@errorString</div>
+}
+else if (timeslist is null || restlist is null)
+{
+    <div class="h4">Идет загрузка...</div>
+}
+else
+{
+    <div><h3><b><i>Активные стопы по слотам</i></b></h3></div>
+    <div class="row">
+       
+        @foreach (var r in restwithstops)
+        {
+            foreach (var rest in restlist)
+            {
+                if (rest.name == r && rest.ext_name.StartsWith("Перцы"))
+                {
+                    <div class="col-md-2">
+                        <div class="card border-primary" style="margin-bottom:5px;margin-top:5px">
+                            <div class="card-header text-center"><b><i>@rest.ext_name</i></b></div>
+                            <div class="card-body">
+                                @foreach (var time in timeslist)
+                                {
+                                    if (r == time.Zone)
+                                    {
+                                        <span class="card-text">
+                                            <span style="color:red;margin-left:10px">@time.Time</span>
+                                        </span>
+                                    }
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+            }
+        }
+    </div>
+    <div class="row">
+        @foreach (var r in restwithstops)
+        {
+            foreach (var rest in restlist)
+            {
+                if (rest.name == r && !rest.ext_name.StartsWith("Перцы"))
+                {
+                    <div class="col-md-2">
+                        <div class="card border-warning" style="margin-bottom:5px;margin-top:5px">
+                            <div class="card-header text-center"><b><i>@rest.ext_name</i></b></div>
+                            <div class="card-body">
+                                @foreach (var time in timeslist)
+                                {
+                                    if (r == time.Zone)
+                                    {
+                                        <span class="card-text">
+                                            <span style="color:red;margin-left:10px">@time.Time</span>
+                                        </span>
+                                    }
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+            }
+        }
+    </div>
+}
+@code {
+
+    List<TimesModel> timeslist;
+    string errorString;
+
+    List<string> alternames = new List<string>();
+    List<string> fullnames = new List<string>();
+    public List<string> restwithstops = new List<string>();
+
+    public List<Rests> restlist;
+
+    //protected override async Task OnParametersSetAsync()
+    //{
+
+    //    await GetApiData();
+    //    await GetApiRestNames();
+    //    DistinctRests();
+    //}
+
+    //protected override async Task OnInitializedAsync()
+    //{
+
+    //    await GetApiData();
+    //    await GetApiRestNames();
+    //    DistinctRests();
+    //}
+
+    protected override async Task OnAfterRenderAsync(bool state)
+    {
+        await GetApiData();
+        await GetApiRestNames();
+        DistinctRests();
+    }
+
+    protected async Task GetApiData()
+    {
+        //var request = new HttpRequestMessage(HttpMethod.Get,)
+        var client = _clientFactory.CreateClient("StopsAPI");
+
+        try
+        {
+            timeslist = await client.GetFromJsonAsync<List<TimesModel>>("Times");
+        }
+        catch (Exception ex)
+        {
+            errorString = $"Произошла ошибка при попытке получить стопы по времени: {ex.Message}";
+        }
+
+        timeslist = timeslist.OrderBy(x => x.Time).ToList();
+
+        StateHasChanged();
+    }
+
+    protected async Task GetApiRestNames()
+    {
+        try
+        {
+            var client2 = _clientFactory.CreateClient("StopsAPI");
+
+            restlist = await client2.GetFromJsonAsync<List<Rests>>("Rests");
+
+            foreach (var r in restlist)
+            {
+                alternames.Add(r.alter_name);
+                fullnames.Add(r.ext_name);
+            }
+
+        }
+        catch (Exception ex)
+        {
+            errorString = $"Произошла ошибка при попытке получить информацию по заведениям: {ex.Message}";
+        }
+    }
+
+    void DistinctRests()
+    {
+        restwithstops.Clear();
+
+        foreach (var time in timeslist)
+        {
+            restwithstops.Add(time.Zone);
+        }
+        restwithstops = restwithstops.Distinct().ToList();
+    }
+
+
+}

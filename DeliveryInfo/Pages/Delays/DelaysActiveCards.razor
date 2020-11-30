@@ -1,0 +1,175 @@
+﻿@page "/delaysactivecards"
+@inject IHttpClientFactory _clientFactory
+
+<style>
+    th {
+        position: sticky;
+        top: 0;
+    }
+</style>
+
+@if (string.IsNullOrWhiteSpace(errorString) == false)
+{
+    <div class="h2">@errorString</div>
+}
+else if (delayssum is null)
+{
+    <div class="h4">Идет загрузка...</div>
+}
+else
+{
+    <div><h3><b><i>Активные по ресторанам</i></b></h3></div>
+          <div class="row">
+                @foreach (var r in restwithdelays)
+                {
+                    foreach (var rest in restlist)
+                    {
+                        if (rest.name == r && rest.ext_name.StartsWith("Перцы"))
+                        {
+                            <div class="col-md-2">
+                                <div class="card border-primary" style="margin-bottom:5px;margin-top:5px">
+                                    <div class="card-header text-center"><b><i>@rest.ext_name</i></b></div>
+                                    <div class="card-body">
+                                        @foreach (var delay in delayssum)
+                                        {
+                                            if (r == delay.Zone)
+                                            {
+                                                <span class="card-text">
+                                                    <span style="color:darkolivegreen;margin-left:10px">@delay.Type</span>
+                                                    <span style="color:darkolivegreen;margin-left:10px">@delay.Cause</span>
+                                                    <span style="color:darkred;margin-left:10px">@delay.Delay</span>
+                                                    <br />
+                                                </span>
+                                            }
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    }
+                }
+            </div>
+            <div class="row">
+                @foreach (var r in restwithdelays)
+                {
+                    foreach (var rest in restlist)
+                    {
+                        if (rest.name == r && !rest.ext_name.StartsWith("Перцы"))
+                        {
+                            <div class="col-md-2">
+                                <div class="card border-warning" style="margin-bottom:5px;margin-top:5px">
+                                    <div class="card-header text-center"><b><i>@rest.ext_name</i></b></div>
+                                    <div class="card-body">
+                                        @foreach (var delay in delayssum)
+                                        {
+                                            if (r == delay.Zone)
+                                            {
+                                        <span class="card-text">
+                                            <span style="color:darkolivegreen;margin-left:10px">@delay.Type</span>
+                                            <span style="color:darkolivegreen;margin-left:10px">@delay.Cause</span>
+                                            <span style="color:darkred;margin-left:10px">@delay.Delay</span>
+                                            <br />
+                                        </span>
+                                            }
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    }
+                }
+            </div>
+}
+
+@code {
+        List<DelaysModel> delayssum;
+        string errorString;
+        int n;
+        [Parameter]
+        public DateTime firstdate { get; set; }
+        [Parameter]
+        public DateTime lastdate { get; set; }
+        [Parameter]
+        public List<Rests> rlist { get; set; }
+
+        List<string> alternames = new List<string>();
+        List<string> fullnames = new List<string>();
+    public List<string> restwithdelays = new List<string>();
+    public List<Rests> restlist;
+
+    //protected override async Task OnParametersSetAsync()
+    //{
+    //    await GetApiData();
+    //    await GetApiRestNames();
+    //    DistinctRests();
+    //}
+
+    //protected override async Task OnInitializedAsync()
+    //{
+    //    await GetApiData();
+    //    await GetApiRestNames();
+    //    DistinctRests();
+    //}
+
+    protected override async Task OnAfterRenderAsync(bool state)
+    {
+        await GetApiData();
+        await GetApiRestNames();
+        if (delayssum != null)
+        {
+            DistinctRests();
+        }
+    }
+
+    protected async Task GetApiData()
+    {
+        //var request = new HttpRequestMessage(HttpMethod.Get,)
+        var client = _clientFactory.CreateClient("StopsAPI");
+
+        try
+        {
+            delayssum = await client.GetFromJsonAsync<List<DelaysModel>>("Delays");
+            n = delayssum.Count - 1;
+
+        }
+        catch (Exception ex)
+        {
+            errorString = $"Произошла ошибка при попытке получить статистику по оттяжкам: {ex.Message}";
+        }
+
+        StateHasChanged();
+    }
+
+    protected async Task GetApiRestNames()
+    {
+        try
+        {
+            var client2 = _clientFactory.CreateClient("StopsAPI");
+
+            restlist = await client2.GetFromJsonAsync<List<Rests>>("Rests");
+
+            foreach (var r in restlist)
+            {
+                alternames.Add(r.alter_name);
+                fullnames.Add(r.ext_name);
+            }
+
+        }
+        catch (Exception ex)
+        {
+            errorString = $"Произошла ошибка при попытке получить информацию по заведениям: {ex.Message}";
+        }
+    }
+
+    void DistinctRests()
+    {
+        restwithdelays.Clear();
+
+        foreach (var delay in delayssum)
+        {
+            restwithdelays.Add(delay.Zone);
+        }
+        restwithdelays = restwithdelays.Distinct().ToList();
+    }
+}
+

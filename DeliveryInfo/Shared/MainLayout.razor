@@ -1,0 +1,30 @@
+﻿@inherits LayoutComponentBase
+@inject Dates Dates
+
+<div class="sidebar">
+    <NavMenu />
+</div>
+
+<div class="main">
+    <div class="top-row px-4">
+       <a href="https://docs.microsoft.com/aspnet/" target="_blank">About</a>
+    </div>
+
+    <div>
+        @Body
+    </div>
+</div>
+
+<style>
+    .content {
+        box-sizing: border-box;
+        height: 100%;
+        padding: 5px;
+        background-color: #efefef;
+        border: 1px solid black;
+        overflow: auto;
+    }
+</style>
+@code{
+    
+}

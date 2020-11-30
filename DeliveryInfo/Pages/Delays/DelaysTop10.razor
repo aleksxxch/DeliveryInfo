@@ -1,0 +1,195 @@
+﻿@page "/delaystop10"
+
+@inject IHttpClientFactory _clientFactory
+@inject Dates Dates
+@inject TrafficState TS
+<style>
+input.modified-checkbox {
+    width:20px;
+    height:20px;
+}
+</style>
+
+@if (string.IsNullOrWhiteSpace(errorString) == false)
+{
+    <div class="h2">@errorString</div>
+}
+else if (delayssum is null)
+{
+    <div class="h4">Идет загрузка...</div>
+}
+else
+{
+<div class="row col-md-2 justify-content-between">
+    <h3><b><i>ТОП-10</i></b></h3>
+    <div class="row">
+        <input class="modified-checkbox" type="checkbox" id="traffic" name="traffic" checked=@TS.trafState @onchange="@(() => { TS.trafState = !TS.trafState; HandleCheckChanged(TS.trafState); })" />
+        <label style="margin-left:5px">С пробками</label>
+    </div>
+</div>
+    <table class="table table-striped">
+        <thead class="thead-dark">
+            <tr>
+                <th>#</th>
+                <th>Ресторан</th>
+                <th>Значение</th>
+                <th>Тип</th>
+                <th>Выставили</th>
+                <th>Убрали</th>
+                <th>Длительность</th>
+                <th>Причина</th>
+                <th>Полная причина</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (alternames.Count > 0 || fullnames.Count > 0)
+            {
+                alternames.Clear();
+                fullnames.Clear();
+            }
+
+            @foreach (var ds in delayssum)
+            {
+                foreach (var rs in rlist)
+                {
+                    if (ds.Zone == rs.name)
+                    {
+                        alternames.Add(rs.alter_name);
+                        fullnames.Add(rs.ext_name);
+                    }
+                }
+            }
+            @foreach (var d in delayssum)
+            {
+                <tr>
+                    <td class="table-dark">@(delayssum.IndexOf(d) + 1)</td>
+                    <td class="table-dark">@fullnames.ElementAt(delayssum.IndexOf(d))</td>
+                    <td>@d.Delay</td>
+                    <td>@d.Type</td>
+                    <td>@d.SetTime</td>
+                    <td>@d.DelTime</td>
+                    <td>
+                        @if (Math.Floor(TimeSpan.FromMinutes(Convert.ToInt64(d.DiffTime)).TotalHours) < 10 && TimeSpan.FromMinutes(Convert.ToInt64(d.DiffTime)).Minutes >= 10)
+                        {
+                            @string.Format("0{0}:{1}",
+                                Math.Floor(TimeSpan.FromMinutes(Convert.ToInt64(d.DiffTime)).TotalHours),
+                                TimeSpan.FromMinutes(Convert.ToInt64(d.DiffTime)).Minutes
+                                @*TimeSpan.FromMinutes(d.durationSum).Seconds*@)
+                        }
+                        @if (TimeSpan.FromMinutes(Convert.ToInt64(d.DiffTime)).Minutes < 10 && Math.Floor(TimeSpan.FromMinutes(Convert.ToInt64(d.DiffTime)).TotalHours) >= 10)
+                        {
+                            @string.Format("{0}:0{1}",
+                               Math.Floor(TimeSpan.FromMinutes(Convert.ToInt64(d.DiffTime)).TotalHours),
+                               TimeSpan.FromMinutes(Convert.ToInt64(d.DiffTime)).Minutes
+                               @*TimeSpan.FromMinutes(d.durationSum).Seconds*@);
+                        }
+                        @if ((Math.Floor(TimeSpan.FromMinutes(Convert.ToInt64(d.DiffTime)).TotalHours) < 10) && (TimeSpan.FromMinutes(Convert.ToInt64(d.DiffTime)).Minutes < 10))
+                        {
+                            @string.Format("0{0}:0{1}",
+                               Math.Floor(TimeSpan.FromMinutes(Convert.ToInt64(d.DiffTime)).TotalHours),
+                               TimeSpan.FromMinutes(Convert.ToInt64(d.DiffTime)).Minutes
+                            @*TimeSpan.FromMinutes(d.durationSum).Seconds*@);
+                        }
+                        @if ((Math.Floor(TimeSpan.FromMinutes(Convert.ToInt64(d.DiffTime)).TotalHours) >= 10) && (TimeSpan.FromMinutes(Convert.ToInt64(d.DiffTime)).Minutes >= 10))
+                        {
+                           @string.Format("{0}:{1}",
+                               Math.Floor(TimeSpan.FromMinutes(Convert.ToInt64(d.DiffTime)).TotalHours),
+                               TimeSpan.FromMinutes(Convert.ToInt64(d.DiffTime)).Minutes
+                               @*TimeSpan.FromMinutes(d.durationSum).Seconds*@);
+                        }
+                    </td>
+                    <td>@d.Cause</td>
+                    <td style="width:550px">@d.fullCause</td>
+                </tr>
+             }
+        </tbody>
+    </table>
+
+}
+
+@code {
+    List<DelaysModel> delayssum;
+    string errorString;
+
+
+    int n;
+    [Parameter]
+    public DateTime firstdate { get; set; }
+    [Parameter]
+    public DateTime lastdate { get; set; }
+    [Parameter]
+    public List<Rests> rlist { get; set; }
+    
+
+    List<string> alternames = new List<string>();
+    List<string> fullnames = new List<string>();
+
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        //await GetApiDataTrafficState();
+        await HandleCheckChanged(TS.trafState);
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        //await GetApiData();
+        //chkd = !chkd;
+        //TS.trafState = false;
+        await HandleCheckChanged(TS.trafState);
+    }
+
+    protected async Task GetApiData()
+    {
+        try
+        {
+            var client = _clientFactory.CreateClient("StopsAPI");
+
+            string f = firstdate.ToString();
+            string l = lastdate.ToString();
+
+            delayssum = await client.GetFromJsonAsync<List<DelaysModel>>("delays/stats/top10?startdate=" + f + "&enddate=" + l + "&causeid=999");
+
+
+        }
+        catch (Exception ex)
+        {
+            errorString = $"Произошла ошибка при попытке получить статистику по оттяжкам: {ex.Message}";
+        }
+    }
+
+    protected async Task GetApiDataTrafficState()
+    {
+        try
+        {
+            var client = _clientFactory.CreateClient("StopsAPI");
+
+            string f = firstdate.ToString();
+            string l = lastdate.ToString();
+
+            delayssum = await client.GetFromJsonAsync<List<DelaysModel>>("delays/stats/top10?startdate=" + f + "&enddate=" + l + "&causeid=5");
+
+
+        }
+        catch (Exception ex)
+        {
+            errorString = $"Произошла ошибка при попытке получить статистику по оттяжкам: {ex.Message}";
+        }
+    }
+
+    protected async Task HandleCheckChanged(bool chkd)
+    {
+        if(chkd)
+        {
+            await GetApiData();
+            StateHasChanged();
+        }
+        else
+        {
+            await GetApiDataTrafficState();
+            StateHasChanged();
+        }
+
+    }
+}
